@@ -173,3 +173,107 @@ void dll::PROT_CONTAINER::distance_sort(dll::PROTON base_point)
 }
 
 //////////////////////////////////
+
+//BASE_CREATURE *****************
+
+dll::BASE_CREATURE::BASE_CREATURE(unsigned char type, float startX, float startY) :PROTON(startX, startY)
+{
+	type_flag = type;
+
+	switch (type_flag)
+	{
+	case hero_flag:
+		NewDims(50.0f, 60.0f);
+		strenght = 20;
+		max_frames = 8;
+		frame_delay = 9;
+		attack_delay = 20;
+		lifes = 200;
+		break;
+
+	case zombie1_flag:
+		NewDims(50.0f, 70.0f);
+		strenght = 5;
+		max_frames = 2;
+		frame_delay = 35;
+		attack_delay = 100;
+		lifes = 50;
+		break;
+
+	case zombie2_flag:
+		NewDims(59.0f, 70.0f);
+		strenght = 8;
+		max_frames = 11;
+		frame_delay = 6;
+		attack_delay = 120;
+		lifes = 80;
+		break;
+
+	case zombie3_flag:
+		NewDims(40.0f, 60.0f);
+		strenght = 4;
+		max_frames = 7;
+		frame_delay = 10;
+		attack_delay = 110;
+		lifes = 40;
+		break;
+	}
+}
+void dll::BASE_CREATURE::Release()
+{
+	delete this;
+}
+void dll::BASE_CREATURE::SetPathInfo(float _end_x, float _end_y)
+{
+	hor_line = false;
+	ver_line = false;
+
+	move_x = x;
+	move_y = y;
+	move_ex = _end_x;
+	move_ey = _end_y;
+
+	if (move_ex - move_x == 0)
+	{
+		ver_line = true;
+		return;
+	}
+	if (move_ey - move_y == 0)
+	{
+		hor_line = true;
+		return;
+	}
+
+	slope = (move_ey - move_y) / (move_ey - move_y);
+	intercept = move_y - move_x * slope;
+}
+int dll::BASE_CREATURE::GetFrame()
+{
+	--frame_delay;
+	if (frame_delay <= 0)
+	{
+		switch (type_flag)
+		{
+		case hero_flag:
+			frame_delay = 9;
+			break;
+
+		case zombie1_flag:
+			frame_delay = 35;
+			break;
+
+		case zombie2_flag:
+			frame_delay = 6;
+			break;
+
+		case zombie3_flag:
+			frame_delay = 10;
+			break;
+		}
+		
+		++current_frame;
+		if (current_frame > max_frames)current_frame = 0;
+	}
+
+	return current_frame;
+}

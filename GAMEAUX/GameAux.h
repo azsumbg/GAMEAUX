@@ -17,10 +17,11 @@ constexpr float ground{ 800.0f };
 constexpr unsigned char zombie1_flag{ 0b00000001 };
 constexpr unsigned char zombie2_flag{ 0b00000010 };
 constexpr unsigned char zombie3_flag{ 0b00000100 };
+constexpr unsigned char hero_flag{ 0b00001000 };
 
-constexpr unsigned char tree1_flag{ 0b00000001 };
-constexpr unsigned char tree2_flag{ 0b00000010 };
-constexpr unsigned char tree3_flag{ 0b00000100 };
+constexpr unsigned char tree1_flag{ 0b00010000 };
+constexpr unsigned char tree2_flag{ 0b00100000 };
+constexpr unsigned char tree3_flag{ 0b01000000 };
 
 enum class dirs { left = 0, right = 1, up = 2, down = 3, stop = 4 };
 
@@ -98,6 +99,45 @@ namespace dll
 			void distance_sort(PROTON base_point);
 	};
 
+	class GAMEAUX_API BASE_CREATURE :public PROTON
+	{
+		protected:
 
+			float move_x{};
+			float move_y{};
+			float move_ex{};
+			float move_ey{};
+			float slope{};
+			float intercept{};
 
+			bool hor_line = false;
+			bool ver_line = false;
+
+			int current_frame{};
+			int max_frames{};
+			int frame_delay{};
+
+			int strenght{};
+			int attack_delay{};
+
+			void SetPathInfo(float _end_x, float _end_y);
+
+		public:
+
+			int lifes{ 0 };
+			dirs dir{ dirs::right };
+
+			BASE_CREATURE(unsigned char type, float startX, float startY);
+			virtual ~BASE_CREATURE() {};
+			void Release();
+
+			int GetFrame();
+
+			virtual void Move(float dest_x, float dest_y, float gear) = 0;
+			virtual int Attack() = 0;
+	};
+
+	typedef BASE_CREATURE* creature_ptr;
+
+	extern GAMEAUX_API creature_ptr CreatureFactory(unsigned char what, float initial_x, float initial_y);
 }
