@@ -23,7 +23,6 @@ int dll::RANDOMIZER::operator()(int min, int max)
 
 ///////////////////////////////////
 
-
 //PROTON ************************
 
 dll::PROTON::PROTON(float _x, float _y, float _width, float _height)
@@ -144,7 +143,7 @@ float dll::PROT_CONTAINER::distance(PROTON first, PROTON second) const
 	if ((abs)(second.y - first.y) == 0)return abs(second.x - first.x);
 	if ((abs)(second.x - first.x) == 0)return abs(second.y - first.y);
 
-	return sqrt(pow(second.x - first.x, 2) + pow(second.y - first.y, 2));
+	return static_cast<float>(sqrt(pow(second.x - first.x, 2) + pow(second.y - first.y, 2)));
 }
 void dll::PROT_CONTAINER::distance_sort(dll::PROTON base_point)
 {
@@ -155,7 +154,7 @@ void dll::PROT_CONTAINER::distance_sort(dll::PROTON base_point)
 	{
 		nearest_found = true;
 
-		for (int i = 0; i < size; i++)
+		for (int i = 0; i < size - 1; i++)
 		{
 			float distance1 = distance(base_point, *(mBase_ptr + i));
 			float distance2 = distance(base_point, *(mBase_ptr + (i + 1)));
@@ -185,6 +184,7 @@ dll::BASE_CREATURE::BASE_CREATURE(unsigned char type, float startX, float startY
 	case hero_flag:
 		NewDims(50.0f, 60.0f);
 		strenght = 20;
+		speed = 2.0f;
 		max_frames = 8;
 		frame_delay = 9;
 		attack_delay = 20;
@@ -194,6 +194,7 @@ dll::BASE_CREATURE::BASE_CREATURE(unsigned char type, float startX, float startY
 	case zombie1_flag:
 		NewDims(50.0f, 70.0f);
 		strenght = 5;
+		speed = 0.7f;
 		max_frames = 2;
 		frame_delay = 35;
 		attack_delay = 100;
@@ -203,6 +204,7 @@ dll::BASE_CREATURE::BASE_CREATURE(unsigned char type, float startX, float startY
 	case zombie2_flag:
 		NewDims(59.0f, 70.0f);
 		strenght = 8;
+		speed = 0.5f;
 		max_frames = 11;
 		frame_delay = 6;
 		attack_delay = 120;
@@ -212,16 +214,20 @@ dll::BASE_CREATURE::BASE_CREATURE(unsigned char type, float startX, float startY
 	case zombie3_flag:
 		NewDims(40.0f, 60.0f);
 		strenght = 4;
+		speed = 0.7f;
 		max_frames = 7;
 		frame_delay = 10;
 		attack_delay = 110;
 		lifes = 40;
 		break;
+
+	case bullet_flag:
+		NewDims(35.0f, 35.0f);
+		speed = 10.0f;
+		max_frames = 32;
+		frame_delay = 2;
+		break;
 	}
-}
-void dll::BASE_CREATURE::Release()
-{
-	delete this;
 }
 void dll::BASE_CREATURE::SetPathInfo(float _end_x, float _end_y)
 {
@@ -244,7 +250,7 @@ void dll::BASE_CREATURE::SetPathInfo(float _end_x, float _end_y)
 		return;
 	}
 
-	slope = (move_ey - move_y) / (move_ey - move_y);
+	slope = (move_ey - move_y) / (move_ex - move_x);
 	intercept = move_y - move_x * slope;
 }
 int dll::BASE_CREATURE::GetFrame()
@@ -269,6 +275,10 @@ int dll::BASE_CREATURE::GetFrame()
 		case zombie3_flag:
 			frame_delay = 10;
 			break;
+
+		case bullet_flag:
+			frame_delay = 2;
+			break;
 		}
 		
 		++current_frame;
@@ -276,4 +286,364 @@ int dll::BASE_CREATURE::GetFrame()
 	}
 
 	return current_frame;
+}
+int dll::BASE_CREATURE::Attack()
+{
+	attack_delay--;
+	if (attack_delay <= 0)
+	{
+		switch (type_flag)
+		{
+		case hero_flag:
+			attack_delay = 20;
+			break;
+
+		case zombie1_flag:
+			attack_delay = 100;
+			break;
+
+		case zombie2_flag:
+			attack_delay = 120;
+			break;
+
+		case zombie3_flag:
+			frame_delay = 10;
+			break;
+		}
+		return strenght;
+	}
+	return 0;
+}
+
+//////////////////////////////////
+
+// HERO CLASS ********************
+
+class HERO :public dll::BASE_CREATURE
+{
+	public:
+
+		HERO(float first_x, float first_y) :BASE_CREATURE(hero_flag, first_x, first_y)
+		{
+			if (first_x >= scr_width / 2)dir = dirs::left;
+			else dir = dirs::right;
+		}
+		void Release() override
+		{
+			delete this;
+		}
+		void Move(bool need_new_path, float dest_x, float dest_y, float gear) override
+		{
+			float now_speed = speed / 5 + gear / 10;
+
+			if (need_new_path)SetPathInfo(dest_x, dest_y);
+
+			if (hor_line)
+			{
+				if (move_ex < move_x && x - now_speed >= 0)
+				{
+					dir = dirs::left;
+					x -= now_speed;
+					SetEdges();
+					return;
+				}
+				else if (move_ex > move_x && ex + now_speed <= scr_width)
+				{
+					dir = dirs::right;
+					x += now_speed;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+			if (ver_line)
+			{
+				if (move_ey < move_y && y - now_speed >= sky)
+				{
+					y -= now_speed;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && ey + now_speed <= ground)
+				{
+					y += now_speed;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+
+			if (move_ex < move_x && x - now_speed >= 0)  // MOVE LEFT
+			{
+				dir = dirs::left;
+
+				if (move_ey < move_y && y - now_speed >= sky) // UP LEFT
+				{
+					x -= now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && ey + now_speed <= ground) // DOWN LEFT 
+				{
+					x -= now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+
+			if (move_ex > move_x && ex + now_speed <= scr_width)  // MOVE RIGHT
+			{
+				dir = dirs::right;
+
+				if (move_ey < move_y && y - now_speed >= sky) // UP RIGHT
+				{
+					x += now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && ey + now_speed <= ground) // DOWN RIGHT 
+				{
+					x += now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+		}
+};
+
+// ZOMBIE CLASS
+
+class ZOMBIE :public dll::BASE_CREATURE
+{
+	public:
+		ZOMBIE(unsigned char what, float initial_x, float initial_y) :BASE_CREATURE(what, initial_x, initial_y)
+		{
+			dir = dirs::left;
+		}
+
+		void Release() override
+		{
+			delete this;
+		}
+		void Move(bool need_new_path, float dest_x, float dest_y, float gear) override
+		{
+			float now_speed = speed / 5 + gear / 15;
+
+			if (need_new_path)SetPathInfo(dest_x, dest_y);
+
+			if (hor_line)
+			{
+				if (move_ex < move_x && x - now_speed >= 0)
+				{
+					dir = dirs::left;
+					x -= now_speed;
+					SetEdges();
+					return;
+				}
+				else if (move_ex > move_x && ex + now_speed <= scr_width)
+				{
+					dir = dirs::right;
+					x += now_speed;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+			if (ver_line)
+			{
+				if (move_ey < move_y && y - now_speed >= sky)
+				{
+					y -= now_speed;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && ey + now_speed <= ground)
+				{
+					y += now_speed;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+
+			if (move_ex < move_x && x - now_speed >= 0)  // MOVE LEFT
+			{
+				dir = dirs::left;
+
+				if (move_ey < move_y && y - now_speed >= sky) // UP LEFT
+				{
+					x -= now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+				}
+				else if (move_ey > move_y && ey + now_speed <= ground) // DOWN LEFT 
+				{
+					x -= now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+			}
+
+			if (move_ex > move_x && ex + now_speed <= scr_width)  // MOVE RIGHT
+			{
+				dir = dirs::right;
+
+				if (move_ey < move_y && y - now_speed >= sky) // UP RIGHT
+				{
+					x += now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && ey + now_speed <= ground) // DOWN RIGHT 
+				{
+					x += now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+		
+		}
+};
+
+/////////////////////////
+
+class BULLET :public dll::BASE_CREATURE
+{
+	public:
+		BULLET(float _first_x, float _first_y, float _end_x, float _end_y, int my_strenght) :BASE_CREATURE(bullet_flag, 
+			_first_x, _first_y)
+		{
+			SetPathInfo(_end_x, _end_y);
+			strenght = my_strenght;
+		}
+
+		void Release() override
+		{
+			delete this;
+		}
+
+		void Move(bool need_new_path, float dest_x, float dest_y, float gear) override
+		{
+			float now_speed = speed + gear / 10;
+
+			if (hor_line)
+			{
+				if (move_ex < move_x && x - now_speed >= 0)
+				{
+					dir = dirs::left;
+					x -= now_speed;
+					SetEdges();
+					return;
+				}
+				else if (move_ex > move_x && ex + now_speed <= scr_width)
+				{
+					dir = dirs::right;
+					x += now_speed;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+			if (ver_line)
+			{
+				if (move_ey < move_y && y - now_speed >= sky)
+				{
+					y -= now_speed;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && ey + now_speed <= ground)
+				{
+					y += now_speed;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+
+			if (move_ex < move_x && x - now_speed >= 0)  // MOVE LEFT
+			{
+				dir = dirs::left;
+
+				if (move_ey < move_y && ey >= sky) // UP LEFT
+				{
+					x -= now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && y <= ground) // DOWN LEFT 
+				{
+					x -= now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+
+			if (move_ex > move_x && ex <= scr_width)  // MOVE RIGHT
+			{
+				dir = dirs::right;
+
+				if (move_ey < move_y && ey >= sky) // UP RIGHT
+				{
+					x += now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else if (move_ey > move_y && y + now_speed <= ground) // DOWN RIGHT 
+				{
+					x += now_speed;
+					y = x * slope + intercept;
+					SetEdges();
+					return;
+				}
+				else return;
+			}
+		}
+};
+
+// FACTORY 
+
+dll::creature_ptr dll::CreatureFactory(unsigned char what, float initial_x, float initial_y, 
+	float bull_end_x, float bull_end_y, int bullet_strenght)
+{
+	creature_ptr ret = nullptr;
+
+	switch (what)
+	{
+	case hero_flag:
+		ret = new HERO(initial_x, initial_y);
+		break;
+
+	case zombie1_flag:
+		ret = new ZOMBIE(what, initial_x, initial_y);
+		break;
+
+	case zombie2_flag:
+		ret = new ZOMBIE(what, initial_x, initial_y);
+		break;
+
+	case zombie3_flag:
+		ret = new ZOMBIE(what, initial_x, initial_y);
+		break;
+
+	case bullet_flag:
+		ret = new BULLET(initial_x, initial_y, bull_end_x, bull_end_y, bullet_strenght);
+		break;
+	}
+
+	return ret;
 }

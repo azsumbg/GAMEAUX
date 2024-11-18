@@ -23,6 +23,8 @@ constexpr unsigned char tree1_flag{ 0b00010000 };
 constexpr unsigned char tree2_flag{ 0b00100000 };
 constexpr unsigned char tree3_flag{ 0b01000000 };
 
+constexpr unsigned char bullet_flag{ 0b10000000 };
+
 enum class dirs { left = 0, right = 1, up = 2, down = 3, stop = 4 };
 
 namespace dll
@@ -120,6 +122,8 @@ namespace dll
 			int strenght{};
 			int attack_delay{};
 
+			float speed{};
+
 			void SetPathInfo(float _end_x, float _end_y);
 
 		public:
@@ -129,15 +133,16 @@ namespace dll
 
 			BASE_CREATURE(unsigned char type, float startX, float startY);
 			virtual ~BASE_CREATURE() {};
-			void Release();
-
+			
 			int GetFrame();
 
-			virtual void Move(float dest_x, float dest_y, float gear) = 0;
-			virtual int Attack() = 0;
+			virtual void Release() = 0;
+			virtual void Move(bool need_new_path = false, float dest_x = 0, float dest_y = 0, float gear=  1.0f) = 0;
+			int Attack();
 	};
 
 	typedef BASE_CREATURE* creature_ptr;
 
-	extern GAMEAUX_API creature_ptr CreatureFactory(unsigned char what, float initial_x, float initial_y);
+	extern GAMEAUX_API creature_ptr CreatureFactory(unsigned char what, float initial_x, float initial_y,
+		float bull_end_x = 0, float bull_end_y = 0, int bullet_strenght = 1.0f);
 }
