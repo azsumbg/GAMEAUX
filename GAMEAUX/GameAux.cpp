@@ -314,6 +314,54 @@ int dll::BASE_CREATURE::Attack()
 	}
 	return 0;
 }
+void dll::BASE_CREATURE::ObstacleDetour(PROTON& Obstacle)
+{
+	obstacle_flags = 0b00000000;
+	
+	if (x > Obstacle.x && x <= Obstacle.ex)obstacle_flags |= obstacle_left;
+	if (ex >= Obstacle.x && ex < Obstacle.ex)obstacle_flags |= obstacle_right;
+	
+	if (y < Obstacle.ey && y >= Obstacle.y)obstacle_flags |= obstacle_up;
+	if (ex >= Obstacle.y && ey < Obstacle.ey)obstacle_flags |= obstacle_down;
+
+	if (obstacle_flags)
+	{
+		switch (obstacle_flags)
+		{
+		case obstacle_down:
+			Move(true, x, sky, speed);
+			break;
+
+		case obstacle_up:
+			Move(true, x, ground, speed);
+			break;
+
+		case obstacle_left:
+			Move(true, scr_width, y, speed);
+			break;
+
+		case obstacle_right:
+			Move(true, 0, y, speed);
+			break;
+
+		case obstacle_up_right:
+			Move(true, 0, ground, speed);
+			break;
+
+		case obstacle_up_left:
+			Move(true, scr_width, ground, speed);
+			break;
+
+		case obstacle_down_right:
+			Move(true, 0, sky, speed);
+			break;
+
+		case obstacle_down_left:
+			Move(true, scr_width, sky, speed);
+			break;
+		}
+	}
+}
 
 //////////////////////////////////
 
